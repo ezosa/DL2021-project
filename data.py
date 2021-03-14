@@ -67,10 +67,3 @@ if __name__ == "__main__":
     print(f"\n [!] Took {time.time() - now:.2f}s")
     import pdb; pdb.set_trace()
 
-# def get_reuters_articles(filepath, max_art=50000):
-#     data = pickle.load(open(filepath,"rb"))[:max_art]
-#     if "sampled" in filepath:
-#         articles = [clean_document(art['text']) for art in data]
-#     else:
-#         articles = [clean_document(art) for art in data]
-#     return articles

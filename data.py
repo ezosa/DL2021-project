@@ -1,4 +1,4 @@
-from sklearn.feature_extraction.text import CountVectorizer
+#from sklearn.feature_extraction.text import CountVectorizer
 from nltk import word_tokenize
 from nltk.corpus import stopwords
 import os
@@ -22,6 +22,7 @@ def clean_document(doc):
 def parse_reuters_articles(filepath):
     direc = os.listdir(filepath)
     direc = [dir for dir in direc if re.match(r'^([\s\d]+)$', dir) is not None]
+    print("direc:", len(direc))
     articles = []
     errors = []
     for dir in direc:

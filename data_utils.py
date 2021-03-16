@@ -19,23 +19,34 @@ def clean_document(doc):
     return clean_stop
 
 
-def create_vocab_from_data(ft_file,  min_df=5, max_df=0.8):
-    df = pd.read_feather(ft_file)
+def create_vocab_from_data(csv_file, min_df=5, max_df=0.7):
+    print("Loading df:", csv_file)
+    df = pd.read_csv(csv_file)
+    print("df:", df.shape)
     texts = list(df.text)
     #headlines = list(df.headline)
-
     clean_docs = [clean_document(doc) for doc in texts]
-
     cvectorizer = CountVectorizer(min_df=min_df, max_df=max_df, stop_words=None)
     cvectorizer.fit_transform(clean_docs).sign()
-
     word2id = dict([(w, cvectorizer.vocabulary_.get(w)) for w in cvectorizer.vocabulary_])
-    id2word = dict([(cvectorizer.vocabulary_.get(w), w) for w in cvectorizer.vocabulary_])
-    print("Vocab size:", len(word2id))
-
-    vocab_file = ft_file[:-3] + "_vocab.pkl"
+    print("vocab before OOV:", len(word2id))
+    word2id['OOV'] = len(word2id)
+    print("vocab + OOV:", len(word2id))
+    vocab_file = "vocabulary.pkl"
     with open(vocab_file, 'wb') as pf:
         pickle.dump(word2id, pf)
         print("Done! Saved vocab as", vocab_file)
 
 
+def create_labels_dictionary(csv_file):
+    print("Loading df:", csv_file)
+    df = pd.read_csv(csv_file)
+    labels = list(df.codes)
+    labels_dict = dict([(labels[i], i) for i in range(len(labels))])
+
+    labels_file = "labels_dictionary.pkl"
+    with open(labels_file, 'wb') as pf:
+        pickle.dump(labels_dict, pf)
+        print("Done! Saved labels dictionary as", labels_file)
+
+create_vocab_from_data("data.csv")

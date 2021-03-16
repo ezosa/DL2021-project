@@ -35,17 +35,20 @@ def train(model,
     global_steps_list = []
 
     # training loop
-    print("Start training for", num_epochs, "epochs...", file=log_file)
+    print("Start training for", num_epochs, "epochs...")
     model.float()
     model.train()
     for epoch in range(num_epochs):
-        print("Epoch", epoch + 1, "of", num_epochs, file=log_file)
+        print("Epoch", epoch + 1, "of", num_epochs)
         for train_batch in train_loader:
             labels = train_batch['binary_label'].unsqueeze(1).to(device)
-            text = train_batch['text']
-            text = torch.stack(text, dim=1).to(device)
-            text_len = train_batch['text_len'].to('cpu')
-            output = model(text, text_len).to(device)
+            #print("labels:", labels.shape)
+            content = train_batch['content']
+            content = torch.stack(content, dim=1).to(device)
+            content_len = train_batch['content_len'].to('cpu')
+            #print("content:", content.shape)
+            output = model(content, content_len).unsqueeze(1).to(device)
+            #print("output:", output.shape)
 
             loss = criterion(output, labels.float())
             optimizer.zero_grad()
@@ -63,10 +66,10 @@ def train(model,
                     # validation loop
                     for val_batch in valid_loader:
                         labels = val_batch['binary_label'].unsqueeze(1).to(device)
-                        text = val_batch['text']
-                        text = torch.stack(text, dim=1).to(device)
-                        text_len = val_batch['text_len'].to('cpu')
-                        output = model(text, text_len).to(device)
+                        content = val_batch['content']
+                        content = torch.stack(content, dim=1).to(device)
+                        content_len = val_batch['content_len'].to('cpu')
+                        output = model(content, content_len).unsqueeze(1).to(device)
 
                         loss = criterion(output, labels.float())
                         valid_running_loss += loss.item()
@@ -86,7 +89,7 @@ def train(model,
                 # print progress
                 print('Epoch [{}/{}], Step [{}/{}], Train Loss: {:.4f}, Valid Loss: {:.4f}'
                       .format(epoch + 1, num_epochs, global_step, num_epochs * len(train_loader),
-                              average_train_loss, average_valid_loss), file=log_file)
+                              average_train_loss, average_valid_loss))
 
                 # checkpoint
                 if best_valid_loss > average_valid_loss:
@@ -95,7 +98,7 @@ def train(model,
                     save_metrics(save_path + model_name + '_metrics.pt', train_loss_list, valid_loss_list, global_steps_list, log_file)
 
     save_metrics(save_path + model_name + '_metrics.pt', train_loss_list, valid_loss_list, global_steps_list, log_file)
-    print('Finished Training!', file=log_file)
+    print('Finished Training!')
 
 
 parser = argparse.ArgumentParser(description='Training LSTM Text classification')
@@ -116,7 +119,7 @@ parser.add_argument('--num_runs', type=int, default=1, help='number of replicate
 
 args = parser.parse_args()
 
-print("="*10, "Training multi-label LSTM text classifier", "="*10)
+print("="*5, "Training multi-label LSTM classifier on Reuters data", "="*5)
 print("Data path:", args.data_path)
 print("train_file:", args.train_file)
 print("valid_file:", args.valid_file)
@@ -130,7 +133,7 @@ print("mlp_hidden_size:", args.mlp_hidden_size)
 print("batch_size:", args.batch_size)
 print("step_size:", args.step_size)
 print("pretrained word emb:", args.pretrained_emb)
-print("="*50)
+print("="*60)
 
 data_path = args.data_path
 num_epochs = args.num_epochs
@@ -141,7 +144,11 @@ train_file = data_path + args.train_file
 valid_file = data_path + args.valid_file
 
 vocab = pickle.load(open(data_path + args.vocab_file, 'rb'))
-label2id = pickle.load(open(data_path + args.label_file, 'rb'))
+label2id = pickle.load(open(data_path + args.labels_file, 'rb'))
+num_classes = len(label2id)
+print("vocab:", len(vocab))
+print("num_classes:", num_classes)
+
 train_data = ArticlesDataset(csv_file=train_file, vocab=vocab, label2id=label2id)
 valid_data = ArticlesDataset(csv_file=valid_file, vocab=vocab, label2id=label2id)
 
@@ -154,10 +161,11 @@ word_emb = load_pretrained_embeddings(args.pretrained_emb, vocab, embedding_dim=
 lstm_args['pretrained_emb'] = word_emb
 lstm_args['vocab_size'] = len(vocab)
 lstm_args['emb_dim'] = args.emb_dim
-lstm_args['hidden_dim'] = args.lstm_hidden_size
+lstm_args['hidden_size'] = args.lstm_hidden_size
 
 mlp_args = {}
 mlp_args['hidden_size'] = args.mlp_hidden_size
+mlp_args['num_classes'] = num_classes
 
 for run_num in range(args.num_runs):
     print("-" * 10, "Run", run_num + 1, "-" * 10)
@@ -168,10 +176,10 @@ for run_num in range(args.num_runs):
     torch.manual_seed(seed_num)
     print("seed:", seed_num)
 
-    model_name = "lstm_text_" + str(args.emb_dim) + "embDim_" + \
+    model_name = "lstm_" + str(args.emb_dim) + "embDim_" + \
                  str(args.lstm_hidden_size) + "LSTMhidden_" + \
                  str(args.mlp_hidden_size) + "MLPhidden_" + \
-                 str(args.num_epochs) + "epochs_"
+                 str(args.num_epochs) + "epochs"
     model_name += "_run" + str(run_num + 1)
 
     print("Model name:", model_name)

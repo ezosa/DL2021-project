@@ -15,9 +15,9 @@ ToDo:
 - ~~take a look on errors~~ SOLVED, encoding errors
 - investigate BERT + pytorch + multi-label options
 
-## Preliminary results ##
+### Preliminary results 
 
-- LSTM:
+#### LSTM:
  - macro F1: 57.78%
  - macro Recall: 52.65%
  - macro Precision: 69.58%

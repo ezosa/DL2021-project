@@ -17,7 +17,7 @@ ToDo:
 
 ### Preliminary results 
 
-#### LSTM:
+#### LSTM (300D GloVe embeddings, 15 epochs, Adam opt, 128 hidden size):
  - macro F1: 57.78%
  - macro Recall: 52.65%
  - macro Precision: 69.58%

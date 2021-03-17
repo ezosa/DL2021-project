@@ -1,8 +1,6 @@
 
 import pickle
 import torch
-import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import DataLoader
 from sklearn.metrics import f1_score, recall_score, precision_score
 import os
@@ -21,46 +19,40 @@ print("Device:", device)
 def evaluate(model, test_loader, threshold=0.5):
     y_pred = []
     y_true = []
-    content = []
-    pred_confidence = []
-    sentence_encodings = []
+
 
     model.eval()
     with torch.no_grad():
-        for test_batch in test_loader:
+        for i, test_batch in enumerate(test_loader):
+            print("Batch", i+1)
             labels = test_batch['binary_label'].unsqueeze(1).to(device)
-            text = test_batch['text']
-            text = torch.stack(text, dim=1).to(device)
-            text_len = test_batch['text_len'].to('cpu')
-            y_score_i = model(text, text_len)
+            content = test_batch['content']
+            content = torch.stack(content, dim=1).to(device)
+            content_len = test_batch['content_len'].to('cpu')
+            y_score_i = model(content, content_len).to(device)
 
             y_pred_i = (y_score_i > threshold).int()
+            #print("predictions:")
+            #print(y_pred_i)
+            #print("y_pred_i:", y_pred_i.shape)
+
             y_pred.extend(y_pred_i.tolist())
-            y_true.extend(labels.tolist())
+            y_true.extend(labels.squeeze(1).tolist())
 
-            if args.save_confidence is True:
-                y_scores = y_score_i.squeeze(1).float().tolist()
-                pred_confidence.extend(y_scores)
-                batch_text = test_batch['content']
-                content.extend(batch_text)
-                #encoded_sent = encoded_sent.cpu().numpy()
-                #print("Encoded sent:")
-                #print(encoded_sent)
-                #sentence_encodings.extend(encoded_sent)
-
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+    print("mean y_true:", np.mean(y_true, axis=1))
+    print("mean y_pred:", np.mean(y_pred, axis=1))
     macro_f1 = f1_score(y_true, y_pred, average='macro')
-    recall = recall_score(y_true, y_pred)
-    precision = precision_score(y_true, y_pred)
-    print("F1:", macro_f1)
-    print("Recall:", recall)
+    print("macro-F1:", macro_f1)
+    recall = recall_score(y_true, y_pred, average='macro')
+    precision = precision_score(y_true, y_pred, average='macro')
+    print("macro Recall:", recall)
+    print("macro Precision:", precision)
 
     results = {'f1': macro_f1,
                'recall': recall,
-               'precision': precision,
-               'confidence': pred_confidence,
-               'labels': y_true,
-               'content': content,
-               'sentence_encodings': sentence_encodings}
+               'precision': precision}
 
     return results
 
@@ -76,7 +68,6 @@ parser.add_argument('--vocab_file', type=str, default='vocab.pkl', help='filenam
 parser.add_argument('--labels_file', type=str, default='label2id.pkl', help='labels dictionary')
 parser.add_argument('--save_path', type=str, default='', help='path to save trained model')
 parser.add_argument('--batch_size', type=int, default=500, help='batch_size')
-parser.add_argument('--step_size', type=int, default=100, help='step_size')
 parser.add_argument('--pretrained_emb', type=str, default='', help='path to pretrained word embeddings')
 parser.add_argument('--num_runs', type=int, default=1, help='number of replicates')
 parser.add_argument('--save_confidence', type=bool, default=False, help='save prediction confidence')
@@ -94,7 +85,6 @@ print("emb_dim:", args.emb_dim)
 print("lstm_hidden_size:", args.lstm_hidden_size)
 print("mlp_hidden_size:", args.mlp_hidden_size)
 print("batch_size:", args.batch_size)
-print("step_size:", args.step_size)
 print("pretrained word emb:", args.pretrained_emb)
 print("save_confidence:", args.save_confidence)
 print("="*60)

@@ -14,3 +14,10 @@ ToDo:
 - ~~need to read labels~~ DONE
 - ~~take a look on errors~~ SOLVED, encoding errors
 - investigate BERT + pytorch + multi-label options
+
+### Preliminary results 
+
+#### LSTM (300D GloVe embeddings, 15 epochs, Adam opt, 128 hidden size):
+ - macro F1: 57.78%
+ - macro Recall: 52.65%
+ - macro Precision: 69.58%

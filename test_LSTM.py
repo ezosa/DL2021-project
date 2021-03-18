@@ -41,8 +41,8 @@ def evaluate(model, test_loader, threshold=0.5):
 
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
-    print("mean y_true:", np.mean(y_true, axis=1))
-    print("mean y_pred:", np.mean(y_pred, axis=1))
+    print("mean y_true labels:", np.mean(y_true, axis=1))
+    print("mean y_pred labels:", np.mean(y_pred, axis=1))
     macro_f1 = f1_score(y_true, y_pred, average='macro')
     print("macro-F1:", macro_f1)
     recall = recall_score(y_true, y_pred, average='macro')
@@ -59,7 +59,9 @@ def evaluate(model, test_loader, threshold=0.5):
 
 parser = argparse.ArgumentParser(description='Testing LSTM Text classification')
 parser.add_argument('--num_epochs', type=int, default=20, help='training epochs')
+parser.add_argument('--use_gru', type=int, default=0, help='use GRU instead of LSTM')
 parser.add_argument('--emb_dim', type=int, default=300, help='dimension of embedding layer')
+parser.add_argument('--dropout', type=float, default=0.5, help='dropout prob')
 parser.add_argument('--lstm_hidden_size', type=int, default=128, help='hidden size')
 parser.add_argument('--mlp_hidden_size', type=int, default=64, help='hidden size')
 parser.add_argument('--data_path', type=str, default='data/', help='path to the train/valid/test sets')
@@ -74,14 +76,16 @@ parser.add_argument('--save_confidence', type=bool, default=False, help='save pr
 
 args = parser.parse_args()
 
-print("="*5, "Testing multi-label LSTM classifier on Reuters data", "="*5)
+print("="*5, "Testing multilabel LSTM classifier on Reuters data", "="*5)
 print("data_path:", args.data_path)
 print("test_file:", args.test_file)
 print("vocab:", args.vocab_file)
 print("labels:", args.labels_file)
 print("save_path:", args.save_path)
+print("use_gru:", args.use_gru)
 print("epochs:", args.num_epochs)
 print("emb_dim:", args.emb_dim)
+print("dropout:", args.dropout)
 print("lstm_hidden_size:", args.lstm_hidden_size)
 print("mlp_hidden_size:", args.mlp_hidden_size)
 print("batch_size:", args.batch_size)
@@ -106,6 +110,8 @@ lstm_args['pretrained_emb'] = word_emb
 lstm_args['vocab_size'] = len(vocab)
 lstm_args['emb_dim'] = args.emb_dim
 lstm_args['hidden_size'] = args.lstm_hidden_size
+lstm_args['dropout'] = args.dropout
+lstm_args['gru'] = args.use_gru
 
 mlp_args = {}
 mlp_args['hidden_size'] = args.mlp_hidden_size
@@ -115,10 +121,15 @@ mlp_args['num_classes'] = num_classes
 # Prepare each test set and evaluate them for every run of the model
 print("test_file:", args.test_file)
 
-model_name = "lstm_" + str(args.emb_dim) + "embDim_" + \
+rnn_name = 'lstm'
+if args.use_gru == 1:
+    rnn_name = 'gru'
+emb_name = args.pretrained_emb.split("/")[-1][:-4]
+model_name = rnn_name + "_" + str(args.emb_dim) + "embDim_" + \
+             str(args.dropout) + "dropout_" + \
              str(args.lstm_hidden_size) + "LSTMhidden_" + \
              str(args.mlp_hidden_size) + "MLPhidden_" + \
-             str(args.num_epochs) + "epochs"
+             str(args.num_epochs) + "epochs" + "_" + emb_name
 
 log_file = open(save_path + model_name + "_test_logs.txt", 'a+')
 

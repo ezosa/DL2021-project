@@ -23,7 +23,7 @@ ToDo:
  - macro Precision: 69.58%
 
 
-#### CNN (300D GloVe embeddings; 20 epochs; 30 kernels of sizes 2, 3, 4, 5; stride 1; dropout=0.25; Adam opt):
+#### CNN (300D GloVe embeddings; 20 epochs; 100 kernels of sizes 2, 3, 4, 5; stride 1; dropout=0.25; Adam opt):
  - macro F1: 68.51%
  - macro Recall: 62.49%
  - macro Precision: 79.49%

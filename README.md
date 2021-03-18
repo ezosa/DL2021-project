@@ -23,9 +23,9 @@ ToDo:
  - macro Precision: 69.58%
 
 #### GRU (300D GloVe embeddings; 2 layers; 20 epochs; 128 LSTM hidden size; 128 hidden MLP; dropout=0.25; Adam opt; early stop):
- - macro F1: 57.78%
- - macro Recall: 52.65%
- - macro Precision: 69.58%
+ - macro F1: 60.65%
+ - macro Recall: 57.58%
+ - macro Precision: 68.90%
 
 #### CNN (300D GloVe embeddings; 20 epochs; 100 kernels of sizes 2, 3, 4, 5; stride 1; dropout=0.25; Adam opt; early stop):
  - macro F1: 68.51%

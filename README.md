@@ -16,9 +16,9 @@ ToDo:
 - investigate BERT + pytorch + multi-label options
 
 ### Dataset stats
-#### 103 classes
-#### Median labels per article: 3
-#### Mean article length: 103
+- 103 classes
+- Median/mean labels per article: 3/3.2
+- Mean article length: 203
 
 ### Preliminary results 
 

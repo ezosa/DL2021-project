@@ -20,7 +20,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Device:", device)
 
 LABEL2ID = pickle.load(open("datafiles/labels2id.pkl","rb"))
-LOG_FILE = f"logrun.{int(time.time())}.log"
+LOG_FILE = f"run.{int(time.time())}.log"
 
 class FFNN(nn.Module):
     # Feel free to add whichever arguments you like here.
@@ -68,27 +68,6 @@ def read_dataset(dfname):
     print(f"[!] Loaded {dfname}, took {time.time() - now:.2f}s")
     return X, y
 
-def args():
-    parser = argparse.ArgumentParser(description='Testing CNN Text classification')
-    parser.add_argument('--num_epochs', type=int, default=10, help='training epochs')
-    parser.add_argument('--emb_dim', type=int, default=50, help='dimension of embedding layer')
-    parser.add_argument('--num_kernel', type=int, default=30, help='num of each kind of kernel')
-    parser.add_argument('--text_len', type=int, default=100, help='text length')
-    parser.add_argument('--stride', type=int, default=1, help='stride')
-    parser.add_argument('--mlp_hidden_size', type=int, default=64, help='hidden size')
-    parser.add_argument('--data_path', type=str, default='data/', help='path to the train-valid-test sets')
-    parser.add_argument('--test_file', type=str, default='test.csv', help='filename of test set')
-    parser.add_argument('--vocab_file', type=str, default='vocab.pkl', help='filename of vocab dict')
-    parser.add_argument('--labels_file', type=str, default='label2id.pkl', help='labels dictionary')
-    parser.add_argument('--save_path', type=str, default='', help='path to save trained model; same as data_path by default')
-    parser.add_argument('--batch_size', type=int, default=32, help='batch_size')
-    parser.add_argument('--step_size', type=int, default=1024, help='step_size')
-    parser.add_argument('--pretrained_emb', type=str, default='', help='path to pretrained word embeddings')
-    parser.add_argument('--num_runs', type=int, default=1, help='number of replicates')
-
-    args = parser.parse_args()
-    return args
-
 def plotloss(train_loss_list, val_loss_list):
     sns.set()
     plt.plot(train_loss_list)
@@ -96,7 +75,7 @@ def plotloss(train_loss_list, val_loss_list):
     plt.legend(['Training Loss', 'Validation Loss'])
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
-    plt.show()
+    plt.savefig(LOG_FILE.replace("log","png"))
 
 def train(model,
           optimizer,
@@ -118,7 +97,6 @@ def train(model,
     valid_loss_list = []
     global_steps_list = []
     save_path = save_path if save_path.endswith("/") else save_path+"/"
-
 
     # training loop
     try:
@@ -169,7 +147,7 @@ def train(model,
                     model.train()
 
                     # print progress
-                    printline = 'Epoch [{}/{}], Step [{}/{}], Train Loss: {:.4f}, Valid Loss: {:.4f}, Took: {:.2f}s'\
+                    printline = 'Epoch [{}/{}], Step [{}/{}], Train Loss: {:.4f}, Valid Loss: {:.4f}, Time: {:.2f}s'\
                         .format(epoch + 1, num_epochs, global_step, num_epochs * len(train_loader),\
                                 average_train_loss, average_valid_loss, time.time() - now)
                     print(printline)
@@ -182,10 +160,14 @@ def train(model,
                         best_valid_loss = average_valid_loss
                         save_checkpoint(save_path + model_name + '.pt', model, optimizer, best_valid_loss, open(LOG_FILE, "a"))
                         save_metrics(save_path + model_name + '_metrics.pt', train_loss_list, valid_loss_list, global_steps_list, open(LOG_FILE, "a"))
-        
-    except KeyboardInterrupt:
-        pass    
     
+    except KeyboardInterrupt:
+        pass
+    except Exception as ex:
+        with open(LOG_FILE, "a") as f:
+            f.write(ex+"\n")
+    
+    # [5:] to avoid huge losses of first 5 measurement and "hockey stick" graph
     plotloss(train_loss_list[5:], valid_loss_list[5:])
 
     save_metrics(save_path + model_name + '_metrics.pt', train_loss_list, valid_loss_list, global_steps_list, open(LOG_FILE, "a"))
@@ -193,6 +175,7 @@ def train(model,
 
 
 if __name__ == "__main__":
+    start = time.time()
 
     train_XT, train_yT = read_dataset("datafiles/train_enc.csv") # ~30 s
     val_XT, val_yT = read_dataset("datafiles/val_enc.csv")
@@ -213,3 +196,4 @@ if __name__ == "__main__":
     valid_loader = DataLoader(val_custom_loader, batch_size=BATCH_SIZE, shuffle=True)
 
     train(model, optimizer, train_loader, valid_loader, "datafiles", criterion, num_epochs=150)
+    print(f"Execution time: {time.time() - start:.2f}s", file=open(LOG_FILE, "a"))

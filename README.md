@@ -15,6 +15,11 @@ ToDo:
 - ~~take a look on errors~~ SOLVED, encoding errors
 - investigate BERT + pytorch + multi-label options
 
+### Dataset stats
+#### 103 classes
+#### Median labels per article: 3
+#### Mean article length: 103
+
 ### Preliminary results 
 
 #### LSTM (300D GloVe embeddings; 20 epochs; 128 LSTM hidden size; dropout=0.5; Adam opt; early stop):

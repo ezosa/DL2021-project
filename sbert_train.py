@@ -194,9 +194,6 @@ if __name__ == "__main__":
     val_XT, val_yT = read_dataset("datafiles/val_enc.csv")
     #test_XT, testXT = read_dataset("datafiles/test_enc.csv")
 
-    print(train_XT[0])
-    print(train_yT[0])
-
     EMBEDDING_DIM = val_XT.shape[1]
     OUTPUT_DIM = val_yT.shape[1]
     BATCH_SIZE = 128
@@ -211,4 +208,4 @@ if __name__ == "__main__":
     train_loader = DataLoader(train_custom_loader, batch_size=BATCH_SIZE, shuffle=True)
     valid_loader = DataLoader(val_custom_loader, batch_size=BATCH_SIZE, shuffle=True)
 
-    train(model, optimizer, train_loader, valid_loader, "datafiles", criterion)
+    train(model, optimizer, train_loader, valid_loader, "datafiles", criterion, num_epochs=150)

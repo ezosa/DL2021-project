@@ -20,7 +20,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Device:", device)
 
 LABEL2ID = pickle.load(open("datafiles/labels2id.pkl","rb"))
-LOG_FILE = open(f"run.{int(time.time())}.log","w")
+LOG_FILE = f"logrun.{int(time.time())}.log"
 
 class FFNN(nn.Module):
     # Feel free to add whichever arguments you like here.
@@ -123,6 +123,7 @@ def train(model,
     # training loop
     try:
         print("Start training for", num_epochs, "epochs...")
+        model.to(device)
         model.float()
         model.train()
         for epoch in range(num_epochs):
@@ -168,23 +169,26 @@ def train(model,
                     model.train()
 
                     # print progress
-                    print('Epoch [{}/{}], Step [{}/{}], Train Loss: {:.4f}, Valid Loss: {:.4f}, Took: {:.2f}s'
-                        .format(epoch + 1, num_epochs, global_step, num_epochs * len(train_loader),
-                                average_train_loss, average_valid_loss, time.time() - now))
+                    printline = 'Epoch [{}/{}], Step [{}/{}], Train Loss: {:.4f}, Valid Loss: {:.4f}, Took: {:.2f}s'\
+                        .format(epoch + 1, num_epochs, global_step, num_epochs * len(train_loader),\
+                                average_train_loss, average_valid_loss, time.time() - now)
+                    print(printline)
+                    with open(LOG_FILE, "a") as f:
+                        f.write(printline+"\n")
                     now = time.time()
 
                     # checkpoint
                     if best_valid_loss > average_valid_loss:
                         best_valid_loss = average_valid_loss
-                        save_checkpoint(save_path + model_name + '.pt', model, optimizer, best_valid_loss, LOG_FILE)
-                        save_metrics(save_path + model_name + '_metrics.pt', train_loss_list, valid_loss_list, global_steps_list, LOG_FILE)
+                        save_checkpoint(save_path + model_name + '.pt', model, optimizer, best_valid_loss, open(LOG_FILE, "a"))
+                        save_metrics(save_path + model_name + '_metrics.pt', train_loss_list, valid_loss_list, global_steps_list, open(LOG_FILE, "a"))
         
     except KeyboardInterrupt:
         pass    
     
     plotloss(train_loss_list[5:], valid_loss_list[5:])
 
-    save_metrics(save_path + model_name + '_metrics.pt', train_loss_list, valid_loss_list, global_steps_list, LOG_FILE)
+    save_metrics(save_path + model_name + '_metrics.pt', train_loss_list, valid_loss_list, global_steps_list, open(LOG_FILE, "a"))
     print('Finished Training!')
 
 

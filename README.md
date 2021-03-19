@@ -9,12 +9,6 @@ Takes ~150s to read & parse XML data.
  [!] Took 150.61s
 ```
 
-ToDo:
-
-- ~~need to read labels~~ DONE
-- ~~take a look on errors~~ SOLVED, encoding errors
-- investigate BERT + pytorch + multi-label options
-
 ### Dataset stats
 - 103 classes
 - Median/mean labels per article: 3/3.2

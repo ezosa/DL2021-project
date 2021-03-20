@@ -5,23 +5,38 @@ import pandas as pd
 import numpy as np
 import time
 
+
 def encode(df, name=""):
     try:
         df["X"] = df["headline"] + " " + df["text"]
         df["X"] = df["X"].apply(clean_document)
         df = df.reset_index().drop(columns=["index"])
+
         model = SentenceTransformer('paraphrase-distilroberta-base-v1')
+
         now = time.time()
         enc = model.encode(df["X"])
         encdf = pd.DataFrame(enc)
         encdf.columns = [f"dim{c}" for c in range(encdf.shape[1])]
+
         print(f"[!] Took {time.time() - now}s")
+
+        encdf["codes"] = df.reset_index()["codes"]
+        try:
+            encdf = encdf.drop(columns=["Unnamed: 0"])
+        except KeyError:
+            pass
+
         filename=f"datafiles/{name}_enc_{int(time.time())}"
         encdf.to_csv(filename+".csv")
-        encdf.to_feather(filename+".ft")
+        #encdf.to_feather(filename+".ft")
+    
         print(f"[+] Written to {filename}")
-    except:
+    
+    except Exception as ex:
+        print(ex)
         import pdb; pdb.set_trace()
+
 
 if __name__ == "__main__":
     dataset = pd.read_csv("datafiles/data.csv")

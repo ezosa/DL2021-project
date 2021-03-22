@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict
 from textwrap import wrap
+from sklearn.metrics import f1_score, recall_score, precision_score
 
 from torch import nn, optim
 from torch.utils.data import DataLoader
@@ -24,6 +25,7 @@ EPOCHS = 3
 MAX_LEN = 256
 BATCH_SIZE = 16
 HIDDEN_SIZE = 64
+NUM_CLASSES = 103
 
 RANDOM_SEED = 42
 np.random.seed(RANDOM_SEED)
@@ -52,30 +54,35 @@ def create_data_loader(df, label2id, tokenizer, max_len, batch_size):
 
 
 class Classifier(nn.Module):
-    def __init__(self, hidden_size):
+    def __init__(self, num_classes):
         super(Classifier, self).__init__()
         self.bert = BertModel.from_pretrained(PRETRAINED_BERT)
         self.drop = nn.Dropout(p=0.3)
-        self.fc = nn.Linear(self.bert.config.hidden_size, hidden_size)
+        self.fc = nn.Linear(self.bert.config.hidden_size, num_classes)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, input_ids, attention_mask):
-        print("input_ids:", input_ids.shape)
-        print("attention_mask:", attention_mask.shape)
+        #print("input_ids:", input_ids.shape)
+        #print("attention_mask:", attention_mask.shape)
         input_ids = input_ids.squeeze(1)
         attention_mask = attention_mask.squeeze(1)
-        print("input_ids:", input_ids.shape)
-        print("attention_mask:", attention_mask.shape)
+        #print("input_ids:", input_ids.shape)
+        #print("attention_mask:", attention_mask.shape)
 
-        last_state, pooled_output = self.bert(
+        output_dict = self.bert(
+            return_dict=True,
             input_ids=input_ids,
             attention_mask=attention_mask
         )
-        #print("outputs:", outputs.keys())
-        #pooled_output = outputs.pooler_output
+        #print("outputs:", output_dict.keys())
+        pooled_output = output_dict['pooler_output']
+        #print("pooled_output:")
+        #print(pooled_output)
         output = self.drop(pooled_output)
         output = self.fc(output)
         output = self.sigmoid(output)
+        #print("output:", output.shape)
+        #print(output)
         return output
 
 
@@ -86,7 +93,8 @@ def train_epoch(
         optimizer,
         scheduler):
 
-    model = model.train()
+    model.float()
+    model.train()
     losses = []
 
     for train_batch in train_loader:
@@ -95,12 +103,12 @@ def train_epoch(
         targets = train_batch["targets"].to(device)
 
         outputs = model(
-          input_ids=input_ids,
-          attention_mask=attention_mask
+            input_ids=input_ids,
+            attention_mask=attention_mask
         )
 
         # append new loss
-        loss = loss_fn(outputs, targets)
+        loss = loss_fn(outputs, targets.float())
         losses.append(loss.item())
 
         # compute accuracy
@@ -142,36 +150,53 @@ def eval_model(model, data_loader, loss_fn):
     return np.mean(losses)
 
 
-# def get_predictions(model, data_loader):
-#     model = model.eval()
-#     review_texts = []
-#     predictions = []
-#     prediction_probs = []
-#     real_values = []
-#
-#     with torch.no_grad():
-#         for d in data_loader:
-#             texts = d["doc_text"]
-#             input_ids = d["input_ids"].to(device)
-#             attention_mask = d["attention_mask"].to(device)
-#             targets = d["targets"].to(device)
-#
-#             outputs = model(
-#                 input_ids=input_ids,
-#                 attention_mask=attention_mask)
-#             _, preds = torch.max(outputs, dim=1)
-#
-#             probs = F.softmax(outputs, dim=1)
-#
-#             review_texts.extend(texts)
-#             predictions.extend(preds)
-#             prediction_probs.extend(probs)
-#             real_values.extend(targets)
-#
-#     predictions = torch.stack(predictions).cpu()
-#     prediction_probs = torch.stack(prediction_probs).cpu()
-#     real_values = torch.stack(real_values).cpu()
-#     return review_texts, predictions, prediction_probs, real_values
+def get_predictions(model, data_loader, threshold=0.5):
+    review_texts = []
+    prediction_probs = []
+    real_values = []
+    predictions = []
+    targets = []
+
+    model = model.eval()
+    with torch.no_grad():
+        for d in data_loader:
+            input_ids = d["input_ids"].to(device)
+            attention_mask = d["attention_mask"].to(device)
+            targets_i = d["targets"].to(device)
+
+            outputs = model(
+                input_ids=input_ids,
+                attention_mask=attention_mask)
+
+            # pred = torch.max(outputs, dim=1)
+            # probs = F.softmax(outputs, dim=1)
+            preds_i = (outputs > threshold).int()
+
+            print("targets:", targets_i.shape)
+            print("predictions:", preds_i.shape)
+            predictions.extend(preds_i.tolist())
+            targets.extend(targets_i.squeeze(1).tolist())
+
+            # predictions.extend(preds)
+            # prediction_probs.extend(probs)
+            # real_values.extend(targets)
+
+    y_true = np.array(targets)
+    y_pred = np.array(predictions)
+    print("mean y_true labels:", np.mean(y_true, axis=1))
+    print("mean y_pred labels:", np.mean(y_pred, axis=1))
+    macro_f1 = f1_score(y_true, y_pred, average='macro')
+    print("macro-F1:", macro_f1)
+    recall = recall_score(y_true, y_pred, average='macro')
+    precision = precision_score(y_true, y_pred, average='macro')
+    print("macro Recall:", recall)
+    print("macro Precision:", precision)
+
+    results = {'f1': macro_f1,
+               'recall': recall,
+               'precision': precision}
+
+    return results
 
 
 if __name__ == "__main__":
@@ -196,7 +221,7 @@ if __name__ == "__main__":
 
     data = next(iter(train_loader))
 
-    model = Classifier(HIDDEN_SIZE).to(device)
+    model = Classifier(NUM_CLASSES).to(device)
 
     input_ids = data['input_ids'].to(device)
     attention_mask = data['attention_mask'].to(device)
@@ -230,7 +255,7 @@ if __name__ == "__main__":
 
         print(f'Train loss {train_loss} accuracy {train_acc}')
 
-        val_acc, val_loss = eval_model(
+        val_loss = eval_model(
             model,
             valid_loader,
             loss_fn
@@ -249,18 +274,18 @@ if __name__ == "__main__":
 
     print("Finished finetuning BERT! Saved model at", save_path + "best_BERT_model_state.bin")
 
-    # test_acc, _ = eval_model(
-    #     model,
-    #     test_loader,
-    #     loss_fn
-    # )
-    # print('\nTest Accuracy:\n')
-    # print(test_acc.item())
+    test_loss = eval_model(
+        model,
+        test_loader,
+        loss_fn
+    )
+    print('\nTest loss:\n')
+    print(test_loss.item())
 
-    # y_review_texts, y_pred, y_pred_probs, y_test = get_predictions(
-    #     model,
-    #     test_data_loader
-    # )
+    results = get_predictions(
+        model,
+        test_loader
+    )
 
     # print(classification_report(y_test, y_pred, target_names=class_names))
 

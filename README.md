@@ -9,18 +9,17 @@ Takes ~150s to read & parse XML data.
  [!] Took 150.61s
 ```
 
-ToDo:
-
-- ~~need to read labels~~ DONE
-- ~~take a look on errors~~ SOLVED, encoding errors
-- investigate BERT + pytorch + multi-label options
+### Dataset stats
+- 103 classes
+- Median/mean labels per article: 3/3.2
+- Mean article length: 203
 
 ### Preliminary results 
 
-#### LSTM (300D GloVe embeddings; 20 epochs; 128 LSTM hidden size; dropout=0.5; Adam opt; early stop):
- - macro F1: 57.78%
- - macro Recall: 52.65%
- - macro Precision: 69.58%
+#### LSTM (300D GloVe embeddings; 2 layers; 20 epochs; 128 LSTM hidden size; 128 hidden MLP; dropout=0.25; Adam opt; early stop):
+ - macro F1: 60.91%
+ - macro Recall: 56.57%
+ - macro Precision: 71.90%
 
 #### GRU (300D GloVe embeddings; 2 layers; 20 epochs; 128 LSTM hidden size; 128 hidden MLP; dropout=0.25; Adam opt; early stop):
  - macro F1: 60.65%

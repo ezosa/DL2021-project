@@ -30,3 +30,8 @@ Takes ~150s to read & parse XML data.
  - macro F1: 68.51%
  - macro Recall: 62.49%
  - macro Precision: 79.49%
+
+#### FFNN (S-BERT, 100 epochs, dropout=0.5, Adam opt; early stop):
+ - macro-F1: 52.43%
+ - macro Recall: 46.55%
+ - macro Precision: 67.09%

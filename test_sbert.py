@@ -20,7 +20,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Device:", DEVICE)
 
 LABEL2ID = pickle.load(open("datafiles/labels2id.pkl","rb"))
-MODEL_NAME = "model2"
+MODEL_NAME = "model-bceloss"
 LOG_FILE = f"test-{MODEL_NAME}.{int(time.time())}.log"
 
 class FFNN(nn.Module):
@@ -60,8 +60,8 @@ def evaluate(model, test_loader, threshold=0.5):
             y_score_i = model(content).to(DEVICE)
             y_pred_i = (y_score_i > threshold).int()
             
-            logdata = f"[{i+1}] Predictions: shape {y_score_i.shape}, prob_tensor:\n{y_score_i},\nlabel tensor:\n {y_pred_i}"
-            log(logdata)
+            #logdata = f"[{i+1}] Predictions: shape {y_score_i.shape}, prob_tensor:\n{y_score_i},\nlabel tensor:\n {y_pred_i}"
+            #log(logdata)
 
             y_pred.extend(y_pred_i.tolist())
             y_true.extend(labels.tolist())

@@ -16,11 +16,12 @@ import seaborn as sns
 from train_utils import save_checkpoint, save_metrics
 from dataloaders.CustomLoader import CustomLoader
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("Device:", device)
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("Device:", DEVICE)
 
 LABEL2ID = pickle.load(open("datafiles/labels2id.pkl","rb"))
-LOG_FILE = f"run.{int(time.time())}.log"
+MODEL_NAME = "model-bceloss"
+LOG_FILE = f"train-{MODEL_NAME}.{int(time.time())}.log"
 
 class FFNN(nn.Module):
     # Feel free to add whichever arguments you like here.
@@ -32,17 +33,19 @@ class FFNN(nn.Module):
         self.fc2 = nn.Linear(hidden_neurons_1, hidden_neurons_2)
         self.fc3 = nn.Linear(hidden_neurons_2, n_classes)
         self.dropout = nn.Dropout(dropout_rate)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x, hidden_activation=F.relu):
         x = hidden_activation(self.fc1(x))
         x = self.dropout(x)
         x = hidden_activation(self.fc2(x))
         x = self.dropout(x)
-        return self.fc3(x)
+        return self.sigmoid(self.fc3(x))
 
 def drop_col(c):
     try:
-        c = c.drop(columns=["Unnamed: 0"])
+        unnamed = [x for x in c.columns if "nnamed" in x]
+        c = c.drop(columns=unnamed)
     except KeyError:
         pass
     return c
@@ -58,6 +61,10 @@ def convert_codes(row):
         binary_label[codes2id] = 1
         
     return binary_label
+
+def log(info):
+    with open(LOG_FILE, "a") as f:
+        f.write(info+"\n")
 
 def read_dataset(dfname):
     now = time.time()
@@ -101,18 +108,18 @@ def train(model,
     # training loop
     try:
         print("Start training for", num_epochs, "epochs...")
-        model.to(device)
+        model.to(DEVICE)
         model.float()
         model.train()
         for epoch in range(num_epochs):
             print("Epoch", epoch + 1, "of", num_epochs)
             for train_batch in train_loader:
-                labels = train_batch[1].to(device)
-                content = train_batch[0].to(device)
-                output = model(content).to(device)
+                labels = train_batch[1].to(DEVICE)
+                content = train_batch[0].to(DEVICE)
+                output = model(content).to(DEVICE)
                 # labels & output shapes: [128, 103]
 
-                loss = criterion(output, torch.max(labels, 1)[1])
+                loss = criterion(output, labels)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -127,12 +134,17 @@ def train(model,
                     with torch.no_grad():
                         # validation loop
                         for val_batch in valid_loader:
-                            labels = val_batch[1].to(device)
-                            content = val_batch[0].to(device)
-                            output = model(content).to(device)
+                            labels = val_batch[1].to(DEVICE)
+                            content = val_batch[0].to(DEVICE)
+                            output = model(content).to(DEVICE)
 
-                            loss = criterion(output, torch.max(labels,1)[1])
+                            loss = criterion(output, labels)
                             valid_running_loss += loss.item()
+
+                            # DOESN'T WORK
+                            #macro_f1 = f1_score(labels.to_list(), output.to_list(), average='macro')
+                            #log(f"macro-F1: {macro_f1}")
+                            #log(f"{labels.shape}, {type(labels), {output.shape}, type(output)}")
 
                     # evaluation
                     average_train_loss = running_loss / eval_every_batches
@@ -151,8 +163,7 @@ def train(model,
                         .format(epoch + 1, num_epochs, global_step, num_epochs * len(train_loader),\
                                 average_train_loss, average_valid_loss, time.time() - now)
                     print(printline)
-                    with open(LOG_FILE, "a") as f:
-                        f.write(printline+"\n")
+                    log(printline)
                     now = time.time()
 
                     # checkpoint
@@ -163,9 +174,6 @@ def train(model,
     
     except KeyboardInterrupt:
         pass
-    except Exception as ex:
-        with open(LOG_FILE, "a") as f:
-            f.write(ex+"\n")
     
     # [5:] to avoid huge losses of first 5 measurement and "hockey stick" graph
     plotloss(train_loss_list[5:], valid_loss_list[5:])
@@ -179,7 +187,7 @@ if __name__ == "__main__":
 
     train_XT, train_yT = read_dataset("datafiles/train_enc.csv") # ~30 s
     val_XT, val_yT = read_dataset("datafiles/val_enc.csv")
-    #test_XT, testXT = read_dataset("datafiles/test_enc.csv")
+    #test_XT, test_yT = read_dataset("datafiles/test_enc.csv")
 
     EMBEDDING_DIM = val_XT.shape[1]
     OUTPUT_DIM = val_yT.shape[1]
@@ -187,7 +195,7 @@ if __name__ == "__main__":
 
     model = FFNN(EMBEDDING_DIM, OUTPUT_DIM)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCELoss()
 
     train_custom_loader = CustomLoader(train_XT, train_yT)
     val_custom_loader = CustomLoader(val_XT, val_yT)
@@ -195,5 +203,5 @@ if __name__ == "__main__":
     train_loader = DataLoader(train_custom_loader, batch_size=BATCH_SIZE, shuffle=True)
     valid_loader = DataLoader(val_custom_loader, batch_size=BATCH_SIZE, shuffle=True)
 
-    train(model, optimizer, train_loader, valid_loader, "datafiles", criterion, num_epochs=150)
+    train(model, optimizer, train_loader, valid_loader, "datafiles", criterion, num_epochs=100, model_name=MODEL_NAME)
     print(f"Execution time: {time.time() - start:.2f}s", file=open(LOG_FILE, "a"))

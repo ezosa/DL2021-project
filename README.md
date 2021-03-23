@@ -35,3 +35,8 @@ Takes ~150s to read & parse XML data.
  - macro-F1: 52.43%
  - macro Recall: 46.55%
  - macro Precision: 67.09%
+ 
+#### BERT-base-cased finetuned for 3 epochs (AdamW opt):
+- macro F1: 63.97%
+- macro Recall: 59.96%
+- macro Precision: 71.94%

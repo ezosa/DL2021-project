@@ -20,7 +20,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Device:", DEVICE)
 
 LABEL2ID = pickle.load(open("datafiles/labels2id.pkl","rb"))
-MODEL_NAME = "model-bceloss"
+MODEL_NAME = "model-bce-deep"
 LOG_FILE = f"test-{MODEL_NAME}.{int(time.time())}.log"
 
 class FFNN(nn.Module):
@@ -40,6 +40,31 @@ class FFNN(nn.Module):
         x = hidden_activation(self.fc2(x))
         x = self.dropout(x)
         return self.fc3(x)
+
+class FFNN_DEEP(nn.Module):
+    # Feel free to add whichever arguments you like here.
+    def __init__(self, sbert_dim, n_classes, hidden_neurons_1=512, hidden_neurons_2=256, dropout_rate=0.5):
+        # super(FFNN, self).__init__() # obsolete syntax
+        super().__init__()
+        self.fc1 = nn.Linear(sbert_dim, hidden_neurons_1)
+        self.fc2 = nn.Linear(hidden_neurons_1, hidden_neurons_1)
+        self.fc3 = nn.Linear(hidden_neurons_1, hidden_neurons_2)
+        self.fc4 = nn.Linear(hidden_neurons_2, hidden_neurons_2)
+        self.fc5 = nn.Linear(hidden_neurons_2, n_classes)
+        self.dropout = nn.Dropout(dropout_rate)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x, hidden_activation=F.relu):
+        x = hidden_activation(self.fc1(x))
+        x = self.dropout(x)
+        x = hidden_activation(self.fc2(x))
+        x = self.dropout(x)
+        x = hidden_activation(self.fc3(x))
+        x = self.dropout(x)
+        x = hidden_activation(self.fc4(x))
+        x = self.dropout(x)
+        return self.sigmoid(self.fc5(x))
+
 
 def log(info):
     with open(LOG_FILE, "a") as f:
@@ -92,7 +117,8 @@ if __name__ == "__main__":
     OUTPUT_DIM = test_yT.shape[1]
     BATCH_SIZE = 128
 
-    model = FFNN(EMBEDDING_DIM, OUTPUT_DIM)
+    #model = FFNN(EMBEDDING_DIM, OUTPUT_DIM)
+    model = FFNN_DEEP(EMBEDDING_DIM, OUTPUT_DIM)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     
     test_custom_loader = CustomLoader(test_XT, test_yT)

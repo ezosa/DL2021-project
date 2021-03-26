@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from sklearn.metrics import f1_score
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -20,7 +21,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Device:", DEVICE)
 
 LABEL2ID = pickle.load(open("datafiles/labels2id.pkl","rb"))
-MODEL_NAME = "model-bceloss"
+MODEL_NAME = "model-bce-deep"
 LOG_FILE = f"train-{MODEL_NAME}.{int(time.time())}.log"
 
 class FFNN(nn.Module):
@@ -28,7 +29,6 @@ class FFNN(nn.Module):
     def __init__(self, sbert_dim, n_classes, hidden_neurons_1=256, hidden_neurons_2=128, dropout_rate=0.5):
         # super(FFNN, self).__init__() # obsolete syntax
         super().__init__()
-        # WRITE CODE HERE
         self.fc1 = nn.Linear(sbert_dim, hidden_neurons_1)
         self.fc2 = nn.Linear(hidden_neurons_1, hidden_neurons_2)
         self.fc3 = nn.Linear(hidden_neurons_2, n_classes)
@@ -41,6 +41,31 @@ class FFNN(nn.Module):
         x = hidden_activation(self.fc2(x))
         x = self.dropout(x)
         return self.sigmoid(self.fc3(x))
+
+class FFNN_DEEP(nn.Module):
+    # Feel free to add whichever arguments you like here.
+    def __init__(self, sbert_dim, n_classes, hidden_neurons_1=512, hidden_neurons_2=256, dropout_rate=0.5):
+        # super(FFNN, self).__init__() # obsolete syntax
+        super().__init__()
+        self.fc1 = nn.Linear(sbert_dim, hidden_neurons_1)
+        self.fc2 = nn.Linear(hidden_neurons_1, hidden_neurons_1)
+        self.fc3 = nn.Linear(hidden_neurons_1, hidden_neurons_2)
+        self.fc4 = nn.Linear(hidden_neurons_2, hidden_neurons_2)
+        self.fc5 = nn.Linear(hidden_neurons_2, n_classes)
+        self.dropout = nn.Dropout(dropout_rate)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x, hidden_activation=F.relu):
+        x = hidden_activation(self.fc1(x))
+        x = self.dropout(x)
+        x = hidden_activation(self.fc2(x))
+        x = self.dropout(x)
+        x = hidden_activation(self.fc3(x))
+        x = self.dropout(x)
+        x = hidden_activation(self.fc4(x))
+        x = self.dropout(x)
+        return self.sigmoid(self.fc5(x))
+
 
 def drop_col(c):
     try:
@@ -187,13 +212,14 @@ if __name__ == "__main__":
 
     train_XT, train_yT = read_dataset("datafiles/train_enc.csv") # ~30 s
     val_XT, val_yT = read_dataset("datafiles/val_enc.csv")
-    #test_XT, test_yT = read_dataset("datafiles/test_enc.csv")
+    test_XT, test_yT = read_dataset("datafiles/test_enc.csv")
 
     EMBEDDING_DIM = val_XT.shape[1]
     OUTPUT_DIM = val_yT.shape[1]
     BATCH_SIZE = 128
 
-    model = FFNN(EMBEDDING_DIM, OUTPUT_DIM)
+    #model = FFNN(EMBEDDING_DIM, OUTPUT_DIM)
+    model = FFNN_DEEP(EMBEDDING_DIM, OUTPUT_DIM)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     criterion = nn.BCELoss()
 
@@ -203,5 +229,5 @@ if __name__ == "__main__":
     train_loader = DataLoader(train_custom_loader, batch_size=BATCH_SIZE, shuffle=True)
     valid_loader = DataLoader(val_custom_loader, batch_size=BATCH_SIZE, shuffle=True)
 
-    train(model, optimizer, train_loader, valid_loader, "datafiles", criterion, num_epochs=100, model_name=MODEL_NAME)
+    train(model, optimizer, train_loader, valid_loader, "datafiles", criterion, num_epochs=25, model_name=MODEL_NAME)
     print(f"Execution time: {time.time() - start:.2f}s", file=open(LOG_FILE, "a"))

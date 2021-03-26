@@ -27,11 +27,26 @@ Takes ~150s to read & parse XML data.
  - macro Precision: 68.90%
 
 #### CNN (300D GloVe embeddings; 20 epochs; 100 kernels of sizes 2, 3, 4, 5; stride 1; dropout=0.25; Adam opt; early stop):
- - macro F1: 68.51%
- - macro Recall: 62.49%
- - macro Precision: 79.49%
+ - macro F1: 68.84%
+ - macro Recall: 64.16%
+ - macro Precision: 77.89%
+
+#### CNN (300D GloVe embeddings; 20 epochs; 100 kernels of sizes 2, 3, 4, 5; stride 2; dropout=0.25; Adam opt; early stop):
+ - macro F1: 68.95%
+ - macro Recall: 64.13%
+ - macro Precision: 77.18%
 
 #### FFNN (S-BERT, 100 epochs, dropout=0.5, Adam opt; early stop):
  - macro-F1: 52.43%
  - macro Recall: 46.55%
  - macro Precision: 67.09%
+ 
+#### BERT-base-cased finetuned for 3 epochs (AdamW opt):
+- macro F1: 63.97%
+- macro Recall: 59.96%
+- macro Precision: 71.94%
+
+#### BERT-base-uncased finetuned for 5 epochs (AdamW opt):
+- macro F1: 68.66%
+- macro Recall: 65.00%
+- macro Precision: 76.42%
